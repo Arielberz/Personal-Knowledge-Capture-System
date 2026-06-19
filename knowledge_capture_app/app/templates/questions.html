@@ -1,0 +1,20 @@
+{% extends "base.html" %} {% block content %}
+<section class="hero compact">
+  <h1>שאלות פתוחות</h1>
+  <p>שאלות ששווה לחזור אליהן ולהעמיק בהן.</p>
+</section>
+
+<section class="card">
+  <ul class="list">
+    {% for question in questions %}
+    <li>
+      <strong>[{{ question.importance_score }}]</strong>
+      {{ question.question }}
+      {% if question.topic %}
+      <span class="pill">{{ question.topic.name }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

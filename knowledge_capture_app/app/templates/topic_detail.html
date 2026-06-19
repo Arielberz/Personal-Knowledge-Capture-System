@@ -1,0 +1,36 @@
+{% extends "base.html" %} {% block content %}
+<section class="hero compact">
+  <h1>{{ topic.name }}</h1>
+  <p>{{ topic.description }}</p>
+</section>
+
+<section class="grid-2">
+  <article class="card">
+    <h2>פריטים קשורים</h2>
+    <ul class="list">
+      {% for capture in captures %}
+      <li>
+        <strong>{{ capture.title }}</strong>
+        <div>{{ capture.summary }}</div>
+      </li>
+      {% endfor %}
+    </ul>
+  </article>
+
+  <article class="card">
+    <h2>שאלות פתוחות</h2>
+    <ul class="list">
+      {% for q in questions %}
+      <li>{{ q.question }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>תזכורות</h2>
+    <ul class="list">
+      {% for reminder in reminders %}
+      <li>{{ reminder.due_date }} - {{ reminder.question }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+{% endblock %}

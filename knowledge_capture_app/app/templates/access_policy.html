@@ -1,0 +1,67 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>מדיניות הרשאות</h2>
+    <p>הגדרת מעטפת בטיחות: מאילו תיקיות הסוכן רשאי לקרוא, ומה נשאר מחוץ לתחום.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/agent" class="action-link secondary-link">חזרה לסוכן</a>
+  </div>
+</div>
+
+<section class="hero compact">
+  <h1>גישה מבוקרת לקבצים</h1>
+  <p>הסוכן מקבל גישה רק לנתיבים שמאושרים כאן במפורש.</p>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>הוספת נתיב מורשה</h2>
+    <span class="pill">Safe Access</span>
+  </div>
+  <form method="post" action="/access-policy/add" class="filters">
+    <label>
+      תחילית נתיב
+      <input type="text" name="path_prefix" placeholder="data/inbox/images" required />
+    </label>
+    <label>
+      תיאור
+      <input type="text" name="description" placeholder="תיאור אופציונלי" />
+    </label>
+    <button type="submit">הוספת נתיב</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>רשימת הרשאות</h2>
+    <span class="pill">{{ policies|length }} נתיבים</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>תחילית נתיב</th>
+          <th>תיאור</th>
+          <th>סטטוס</th>
+          <th>פעולה</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for policy in policies %}
+        <tr>
+          <td>{{ policy.path_prefix }}</td>
+          <td>{{ policy.description or "-" }}</td>
+          <td>{{ "פעיל" if policy.enabled else "כבוי" }}</td>
+          <td>
+            <form method="post" action="/access-policy/toggle/{{ policy.id }}">
+              <button type="submit">{{ "כיבוי" if policy.enabled else "הפעלה" }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

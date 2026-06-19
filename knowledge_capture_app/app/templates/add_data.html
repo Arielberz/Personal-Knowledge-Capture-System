@@ -1,0 +1,80 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>הוספת פריט ידע ידני</h2>
+    <p>כשיש תובנה, רעיון או הערה שלא הגיעו מסריקה אוטומטית, אפשר להזין אותם כאן ידנית.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/captures" class="action-link secondary-link">צפה בפריטים</a>
+  </div>
+</div>
+
+<section class="hero compact">
+  <h1>קליטה ידנית למערכת</h1>
+  <p>הפריט יישמר עם נתיב מקור מאושר וייכנס לזרימת הידע כמו כל קובץ אחר.</p>
+</section>
+
+{% if message %}
+<section class="card success">{{ message }}</section>
+{% endif %}
+
+{% if error %}
+<section class="card error">{{ error }}</section>
+{% endif %}
+
+<section class="card">
+  <div class="panel-head">
+    <h2>טופס קליטה</h2>
+    <span class="pill">Manual Input</span>
+  </div>
+  <form method="post" action="/add-data" class="filters">
+    <label>
+      כותרת
+      <input type="text" name="title" required />
+    </label>
+
+    <label>
+      נושא
+      <select name="topic_id">
+        <option value="">ללא שיוך</option>
+        {% for topic in topics %}
+        <option value="{{ topic.id }}">{{ topic.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      ציון ידע (1-10)
+      <input type="number" min="1" max="10" name="knowledge_score" value="6" required />
+    </label>
+
+    <label class="full-row">
+      נתיב מקור (חייב להיות מורשה)
+      <input type="text" name="source_path" placeholder="manual://note-001 או data/inbox/images/file.png" required />
+    </label>
+
+    <label class="full-row">
+      סיכום
+      <textarea name="summary" rows="5" required></textarea>
+    </label>
+
+    <button type="submit">שמירת פריט</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>נתיבי מקור מורשים</h2>
+    <span class="pill">Policy</span>
+  </div>
+  <ul class="list">
+    {% for policy in allowed_sources %}
+    <li>
+      <strong>{{ policy.path_prefix }}</strong>
+      <div>{{ policy.description or "אין תיאור" }}</div>
+      <div>סטטוס: {{ "פעיל" if policy.enabled else "כבוי" }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

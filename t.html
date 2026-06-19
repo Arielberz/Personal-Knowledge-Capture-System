@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Knowledge Capture Agent — דמו</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;--panel:#ffffff;--text:#172033;--muted:#667085;--line:#e6e9f2;
+      --brand:#315efb;--brand2:#7c3aed;--ok:#0f9f6e;--warn:#f59e0b;--danger:#ef4444;
+      --soft:#eef2ff;--green:#ecfdf3;--yellow:#fffaeb;--red:#fef3f2;--shadow:0 18px 55px rgba(31,45,80,.10);--radius:22px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,"Helvetica Neue",sans-serif;background:radial-gradient(circle at top left,#e9edff 0,transparent 28%),var(--bg);color:var(--text)}
+    .app{display:grid;grid-template-columns:290px 1fr;min-height:100vh} aside{position:sticky;top:0;height:100vh;padding:28px 22px;background:rgba(255,255,255,.78);border-left:1px solid var(--line);backdrop-filter:blur(16px)}
+    .logo{display:flex;gap:12px;align-items:center;margin-bottom:30px}.logo-mark{width:46px;height:46px;border-radius:16px;background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 12px 28px rgba(49,94,251,.25);display:grid;place-items:center;color:white;font-weight:800}.logo h1{font-size:18px;margin:0}.logo p{font-size:12px;margin:3px 0 0;color:var(--muted)}
+    nav{display:grid;gap:8px}.nav-item{border:0;background:transparent;color:#35415c;text-align:right;padding:13px 14px;border-radius:15px;font-size:15px;cursor:pointer;display:flex;align-items:center;gap:10px}.nav-item:hover,.nav-item.active{background:var(--soft);color:var(--brand);font-weight:700}.nav-item span{font-size:18px}
+    .side-note{position:absolute;right:22px;left:22px;bottom:22px;padding:15px;border-radius:18px;background:#101828;color:white}.side-note b{display:block;margin-bottom:6px}.side-note p{font-size:12px;line-height:1.6;color:#d0d5dd;margin:0}
+    main{padding:30px 36px 52px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:24px}.headline h2{font-size:30px;margin:0 0 8px}.headline p{margin:0;color:var(--muted);line-height:1.6;max-width:920px}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.btn{border:0;border-radius:14px;padding:13px 18px;font-weight:700;cursor:pointer}.btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:white;box-shadow:0 12px 25px rgba(49,94,251,.22)}.btn.secondary{background:white;color:#344054;border:1px solid var(--line)}.btn.danger{background:#fff;color:var(--danger);border:1px solid #fecaca}
+    .grid{display:grid;gap:18px}.stats{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:18px}.card{background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.stat{padding:20px}.stat small{color:var(--muted)}.stat strong{display:block;font-size:30px;margin:10px 0 2px}.stat .trend{font-size:12px;color:var(--ok)}
+    .layout{display:grid;grid-template-columns:1.25fr .9fr;gap:18px}.panel{padding:22px}.panel-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px}.panel h3{margin:0;font-size:19px}.pill{font-size:12px;border-radius:999px;background:#f2f4f7;color:#475467;padding:7px 11px;white-space:nowrap}.pill.ok{background:var(--green);color:#027a48}.pill.warn{background:var(--yellow);color:#b54708}.pill.red{background:var(--red);color:#b42318}.capture-list{display:grid;gap:12px}.capture{display:grid;grid-template-columns:92px 1fr auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:white}.thumb{height:70px;border-radius:15px;background:linear-gradient(135deg,#dde5ff,#f5d0fe);display:grid;place-items:center;color:#344054;font-weight:800}.capture h4{margin:0 0 6px}.capture p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}.score{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;font-weight:800;background:var(--green);color:#027a48}.score.mid{background:var(--yellow);color:#b54708}.score.low{background:var(--red);color:#b42318}
+    .flow{display:grid;gap:12px}.flow-step{display:flex;align-items:flex-start;gap:12px;padding:13px;border-radius:16px;background:#fafbff;border:1px solid var(--line)}.flow-number{min-width:32px;height:32px;border-radius:11px;background:var(--brand);color:white;display:grid;place-items:center;font-weight:800}.flow-step b{display:block;margin-bottom:3px}.flow-step span{font-size:13px;color:var(--muted);line-height:1.45}
+    .topic-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.topic{padding:18px;border-radius:18px;border:1px solid var(--line);background:white}.topic b{display:block;margin-bottom:8px}.bar{height:9px;background:#eef2f7;border-radius:999px;overflow:hidden;margin:13px 0}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));border-radius:999px}.topic small{color:var(--muted)}
+    .questions{display:grid;gap:10px}.question{padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff}.question small{color:var(--muted);display:block;margin-bottom:7px}.question p{margin:0;line-height:1.45}.tag{display:inline-flex;margin:3px 3px 0 0;padding:5px 8px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}.search-row{display:flex;gap:10px;margin-bottom:16px}input,select,textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px;background:white;color:var(--text);font-size:14px}textarea{min-height:180px;line-height:1.5}table{width:100%;border-collapse:collapse;background:white;border-radius:16px;overflow:hidden}th,td{border-bottom:1px solid var(--line);padding:13px;text-align:right;font-size:14px;vertical-align:top}th{background:#f8fafc;color:#475467}.screen{display:none}.screen.active{display:block}.mock-upload{border:2px dashed #c7d2fe;border-radius:22px;padding:28px;background:#f8faff;text-align:center}.mock-upload .big{font-size:48px;margin-bottom:10px}.toast{position:fixed;left:24px;bottom:24px;background:#101828;color:white;padding:14px 17px;border-radius:16px;box-shadow:0 12px 35px rgba(0,0,0,.18);opacity:0;transform:translateY(10px);transition:.25s}.toast.show{opacity:1;transform:translateY(0)}
+    .agent-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px}.agent-card{padding:18px;border-radius:20px;background:white;border:1px solid var(--line)}.agent-card .icon{font-size:28px;margin-bottom:8px}.agent-card b{display:block;margin-bottom:6px}.agent-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.agent-console{background:#0b1020;color:#d6e2ff;border-radius:20px;padding:18px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;line-height:1.7;min-height:220px;white-space:pre-wrap;direction:ltr;text-align:left}.permission{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px;border-radius:16px;border:1px solid var(--line);background:#fff;margin-bottom:10px}.permission span{color:var(--muted);font-size:13px;line-height:1.5;display:block;margin-top:3px}.switch{width:46px;height:26px;border-radius:999px;background:#d0d5dd;position:relative;flex:0 0 auto}.switch:after{content:"";width:20px;height:20px;background:white;border-radius:50%;position:absolute;top:3px;right:3px;box-shadow:0 2px 5px rgba(0,0,0,.18)}.switch.on{background:var(--brand)}.switch.on:after{right:23px}.decision{padding:14px;border:1px solid var(--line);border-radius:16px;background:#fff;display:grid;gap:8px}.decision code{direction:ltr;display:block;text-align:left;background:#f8fafc;border:1px solid var(--line);padding:10px;border-radius:12px;color:#344054;white-space:normal}
+    @media(max-width:1100px){.app{grid-template-columns:1fr}aside{position:relative;height:auto}.side-note{position:static;margin-top:20px}main{padding:22px}.stats,.layout,.topic-grid,.agent-grid{grid-template-columns:1fr}.topbar{align-items:flex-start;flex-direction:column}.capture{grid-template-columns:70px 1fr}.capture .score{grid-column:1/-1;width:100%}.search-row{flex-direction:column}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="logo"><div class="logo-mark">AI</div><div><h1>Knowledge Agent</h1><p>סוכן ידע אישי מקומי</p></div></div>
+      <nav>
+        <button class="nav-item active" data-screen="dashboard"><span>📊</span>דשבורד</button>
+        <button class="nav-item" data-screen="agent"><span>🤖</span>סוכן AI</button>
+        <button class="nav-item" data-screen="captures"><span>🖼️</span>פריטי ידע</button>
+        <button class="nav-item" data-screen="topics"><span>🧠</span>נושאים</button>
+        <button class="nav-item" data-screen="review"><span>✅</span>בדיקה ידנית</button>
+        <button class="nav-item" data-screen="reminders"><span>⏰</span>תזכורות</button>
+        <button class="nav-item" data-screen="settings"><span>⚙️</span>הגדרות</button>
+      </nav>
+      <div class="side-note"><b>מצב דמו</b><p>הסוכן כאן מדומה בלבד. בגרסה אמיתית הוא יקבל הרשאה רק לתיקיית Inbox שתגדיר לו.</p></div>
+    </aside>
+    <main>
+      <section id="dashboard" class="screen active">
+        <div class="topbar"><div class="headline"><h2>דשבורד ידע אישי</h2><p>סוכן AI מקומי שסורק תיקיית Inbox במחשב, מנתח גרפים/צילומי מסך/PDF/שיחות, מחליט לאיזה נושא לשייך אותם, ומציג לך הסבר לאישור.</p></div><div class="actions"><button class="btn secondary" onclick="showScreen('agent')">פתח סוכן</button><button class="btn primary" onclick="fakeAgentRun()">הרץ סריקה דמה</button></div></div>
+        <div class="grid stats">
+          <div class="card stat"><small>קבצים שנסרקו</small><strong>128</strong><span class="trend">+18 השבוע</span></div>
+          <div class="card stat"><small>פריטים שהסוכן מיין לבד</small><strong>91</strong><span class="trend">71% דיוק לאחר אישור</span></div>
+          <div class="card stat"><small>ממתינים לאישור</small><strong>7</strong><span class="trend">נדרש Review</span></div>
+          <div class="card stat"><small>ממוצע Knowledge Score</small><strong>7.4</strong><span class="trend">טוב ללמידה</span></div>
+        </div>
+        <div class="layout">
+          <div class="card panel"><div class="panel-head"><h3>פריטים אחרונים שהסוכן ניתח</h3><span class="pill warn">ממתינים לבדיקה: 7</span></div><div class="capture-list" id="latestList"></div></div>
+          <div class="card panel"><div class="panel-head"><h3>איך הסוכן עובד</h3><span class="pill ok">Human-in-the-loop</span></div><div class="flow">
+            <div class="flow-step"><div class="flow-number">1</div><div><b>Watch Folder</b><span>הסוכן מסתכל רק על תיקיית Inbox שאישרת, למשל Desktop/KnowledgeInbox.</span></div></div>
+            <div class="flow-step"><div class="flow-number">2</div><div><b>Analyze</b><span>לכל גרף/תמונה/PDF הוא מחלץ כותרת, מושגים, מספרים, טענות ושאלות.</span></div></div>
+            <div class="flow-step"><div class="flow-number">3</div><div><b>Route</b><span>הוא מחליט האם זה AI Infrastructure, ETF, Market Valuation, Excel וכו׳.</span></div></div>
+            <div class="flow-step"><div class="flow-number">4</div><div><b>Explain & Ask Approval</b><span>לפני שמירה סופית הוא מסביר למה שייך לנושא מסוים ומחכה לאישור שלך.</span></div></div>
+          </div></div>
+        </div>
+      </section>
+
+      <section id="agent" class="screen">
+        <div class="topbar"><div class="headline"><h2>סוכן AI מקומי</h2><p>כאן רואים את “המוח” של המערכת: מה הוא רשאי לקרוא, מה הוא מצא, לאן הוא ממליץ לשלוח כל פריט, ומה ההסבר שלו.</p></div><div class="actions"><button class="btn secondary" onclick="addConsoleLine('Paused watcher. Waiting for manual scan...')">עצור סוכן</button><button class="btn primary" onclick="fakeAgentRun()">סרוק Inbox דמה</button></div></div>
+        <div class="agent-grid">
+          <div class="agent-card"><div class="icon">📁</div><b>גישה מוגבלת לקבצים</b><p>הסוכן לא מקבל גישה לכל המחשב. רק לתיקיות שהגדרת: images, pdfs, chat_exports ו־notes.</p></div>
+          <div class="agent-card"><div class="icon">🧭</div><b>מיון חכם לנושאים</b><p>הוא משייך כל פריט לנושא קיים, ולא פותח נושא חדש על כל דבר קטן.</p></div>
+          <div class="agent-card"><div class="icon">🔎</div><b>הסבר לפני שמירה</b><p>לכל החלטה יש reason: למה זה חשוב, למה הציון כזה, ומה כדאי ללמוד מזה.</p></div>
+        </div>
+        <div class="layout">
+          <div class="card panel"><div class="panel-head"><h3>Agent Console</h3><span class="pill ok">Demo running</span></div><div id="console" class="agent-console">[agent] watching: ~/KnowledgeInbox/images
+[agent] permissions: read-only originals, create outputs only
+[agent] mode: analyze → route → explain → pending_review
+</div></div>
+          <div class="card panel"><div class="panel-head"><h3>הרשאות בטוחות</h3><span class="pill">MVP</span></div>
+            <div class="permission"><div><b>קריאת תיקיית Inbox</b><span>מותר לקרוא קבצים מתוך תיקיית ניסוי בלבד.</span></div><div class="switch on"></div></div>
+            <div class="permission"><div><b>יצירת JSON / Markdown / CSV</b><span>מותר ליצור קבצי פלט חדשים בתיקיית exports.</span></div><div class="switch on"></div></div>
+            <div class="permission"><div><b>מחיקת קבצים מקוריים</b><span>אסור למחוק, להזיז או לשנות שם בלי אישור מפורש.</span></div><div class="switch"></div></div>
+            <div class="permission"><div><b>עיבוד אוטומטי מלא</b><span>בשלב ראשון נשאר pending_review עד שאתה מאשר.</span></div><div class="switch"></div></div>
+          </div>
+        </div>
+        <div class="card panel" style="margin-top:18px"><div class="panel-head"><h3>החלטות אחרונות של הסוכן</h3><span class="pill warn">דורש אישור</span></div><div id="agentDecisions" class="grid"></div></div>
+      </section>
+
+      <section id="captures" class="screen">
+        <div class="topbar"><div class="headline"><h2>פריטי ידע</h2><p>חיפוש וסינון של תמונות, גרפים, שיחות וקבצים שעברו ניתוח.</p></div><button class="btn primary" onclick="fakeUpload()">הוסף פריט דמה</button></div>
+        <div class="card panel"><div class="search-row"><input id="searchInput" placeholder="חפש לפי נושא, תגית או סיכום..." oninput="renderCaptures()"><select id="scoreFilter" onchange="renderCaptures()"><option value="all">כל הציונים</option><option value="8">8 ומעלה</option><option value="6">6 ומעלה</option><option value="low">נמוך מ־6</option></select></div><div id="captureList" class="capture-list"></div></div>
+      </section>
+
+      <section id="topics" class="screen"><div class="topbar"><div class="headline"><h2>מפת נושאים</h2><p>הנושאים המרכזיים שאליהם הסוכן מנסה לשייך ידע חדש.</p></div></div><div class="topic-grid" id="topicGrid"></div></section>
+      <section id="review" class="screen"><div class="topbar"><div class="headline"><h2>בדיקה ידנית</h2><p>הסוכן מציע; אתה מאשר, מתקן או מעביר לארכיון.</p></div></div><div class="card panel"><table><thead><tr><th>פריט</th><th>נושא מוצע</th><th>ציון</th><th>הסבר הסוכן</th><th>פעולה</th></tr></thead><tbody id="reviewTable"></tbody></table></div></section>
+      <section id="reminders" class="screen"><div class="topbar"><div class="headline"><h2>תזכורות ושאלות חזרה</h2><p>הסוכן הופך מידע פסיבי לשאלות פעילות.</p></div><button class="btn secondary" onclick="copyReminder()">העתק Markdown</button></div><div class="layout"><div class="card panel"><div class="panel-head"><h3>שאלות פתוחות</h3></div><div id="questionsList" class="questions"></div></div><div class="card panel"><div class="panel-head"><h3>reminders.md</h3></div><textarea id="mdBox"></textarea></div></div></section>
+      <section id="settings" class="screen"><div class="topbar"><div class="headline"><h2>הגדרות MVP</h2><p>בגרסה אמיתית כאן מגדירים תיקיות, מודל AI, מגבלת עלות, ונושאי ליבה.</p></div></div><div class="card panel"><div class="mock-upload"><div class="big">📂</div><h3>תיקיית Inbox לדוגמה</h3><p>~/KnowledgeInbox/images, ~/KnowledgeInbox/pdfs, ~/KnowledgeInbox/chat_exports</p><button class="btn primary" onclick="toast('בדמו אין בחירת תיקייה אמיתית')">בחר תיקייה</button></div></div></section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script>
+    const captures = [
+      {title:'Cloud AI backlog concentration', topic:'AI Infrastructure', summary:'הסוכן זיהה גרף על ריכוזיות backlog בענן וקשר ל־AI Capex.', score:9, tags:['AI','Cloud','Capex'], reason:'יש קשר ברור בין ביקוש AI, ענן, דאטה סנטרים וסיכון ריכוזיות.'},
+      {title:'Forward P/E compression chart', topic:'Market Valuation', summary:'ניתוח גרף Forward P/E: ירידת מכפיל יכולה לנבוע מעליית תחזיות רווח.', score:8, tags:['Valuation','S&P 500','Earnings'], reason:'גרף עם מושג מרכזי בשוק ההון ושאלה טובה לחזרה.'},
+      {title:'ETF rebalancing explanation', topic:'ETF and Market Structure', summary:'שיחה שמסבירה איך ETF עוקב אחרי מדד גם בין מועדי איזון.', score:7, tags:['ETF','Index','Arbitrage'], reason:'ידע שימושי להבנת מבנה שוק, אך פחות דחוף מגרפים פיננסיים חוזרים.'},
+      {title:'Random screenshot from feed', topic:'Archive', summary:'פריט לא ברור עם ערך נמוך. נשמר לארכיון בלבד.', score:3, tags:['Low Value'], reason:'אין טענה ברורה או קשר לנושאי ליבה.'}
+    ];
+    const topics = [['AI and Automation',82,'Claude Code, Agents, Make.com, Knowledge Systems'],['AI Infrastructure',74,'Cloud, GPU, Data Centers, Electricity'],['Market Valuation',66,'Forward P/E, Earnings, Concentration'],['ETF and Market Structure',58,'Creation Redemption, Rebalancing'],['Portfolio Analytics',49,'MTD, YTD, IRR, MOIC'],['Excel and Data Workflows',43,'Power Query, Formulas, Reporting']];
+    const questions = [['AI Infrastructure','האם הביקוש לחשמל הוא צוואר בקבוק אמיתי או בעיקר נרטיב שוק?'],['Market Valuation','האם הירידה ב־Forward P/E נובעת מירידת מחיר או מעליית תחזיות רווח?'],['ETF','איך Authorized Participants מצמצמים פערים בין ETF לשווי הנכסי שלו?'],['Knowledge System','אילו פריטים מקבלים ציון 8+ ולמה הם חשובים לחזרה?']];
+    const decisions = [
+      {file:'~/KnowledgeInbox/images/cloud_backlog.png', route:'AI Infrastructure → Cloud Backlog', score:9, why:'מופיעים ענן, backlog, חברות AI ומספרים גדולים; זה מתאים לנושא תשתיות AI ולא ל־Market Valuation.'},
+      {file:'~/KnowledgeInbox/images/pe_ratio_chart.jpg', route:'Market Valuation → Forward P/E', score:8, why:'הגרף עוסק במכפילי רווח ותחזיות רווח, לכן שויך להערכת שווי שוק.'},
+      {file:'~/KnowledgeInbox/chat_exports/etf_chat.md', route:'ETF and Market Structure → Rebalancing', score:7, why:'הטקסט מסביר מנגנון חוזר ושימושי אבל אינו כולל נתון חדש או גרף.'}
+    ];
+    function scoreClass(score){return score>=8?'score':score>=6?'score mid':'score low'}
+    function icon(i){return ['📈','🧠','💬','🗂️','📷'][i%5]}
+    function captureHtml(c,i){return `<div class="capture"><div class="thumb">${icon(i)}</div><div><h4>${c.title}</h4><p>${c.summary}</p><div>${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div></div><div class="${scoreClass(c.score)}">${c.score}</div></div>`}
+    function renderLatest(){document.getElementById('latestList').innerHTML = captures.slice(0,3).map(captureHtml).join('')}
+    function renderCaptures(){const q=document.getElementById('searchInput')?.value?.toLowerCase()||'';const f=document.getElementById('scoreFilter')?.value||'all';let rows=captures.filter(c=>(c.title+c.topic+c.summary+c.tags.join(' ')).toLowerCase().includes(q));if(f==='8')rows=rows.filter(c=>c.score>=8);if(f==='6')rows=rows.filter(c=>c.score>=6);if(f==='low')rows=rows.filter(c=>c.score<6);document.getElementById('captureList').innerHTML=rows.map(captureHtml).join('')||'<p>לא נמצאו פריטים.</p>'}
+    function renderTopics(){document.getElementById('topicGrid').innerHTML=topics.map(t=>`<div class="topic"><b>${t[0]}</b><small>${t[2]}</small><div class="bar"><i style="width:${t[1]}%"></i></div><small>${t[1]}% פעילות ידע</small></div>`).join('')}
+    function renderReview(){document.getElementById('reviewTable').innerHTML=captures.map(c=>`<tr><td>${c.title}</td><td>${c.topic}</td><td>${c.score}</td><td>${c.reason}</td><td><button class="btn secondary" onclick="toast('אושר בדמו')">אשר</button></td></tr>`).join('')}
+    function renderQuestions(){document.getElementById('questionsList').innerHTML=questions.map(q=>`<div class="question"><small>${q[0]}</small><p>${q[1]}</p></div>`).join('');document.getElementById('mdBox').value='# Reminders\n\n## השבוע\n'+questions.map(q=>`- [${q[0]}] ${q[1]}`).join('\n')}
+    function renderDecisions(){document.getElementById('agentDecisions').innerHTML=decisions.map(d=>`<div class="decision"><b>${d.route} <span class="tag">Score ${d.score}</span></b><code>${d.file}</code><p style="margin:0;color:var(--muted);line-height:1.5">${d.why}</p><div><button class="btn secondary" onclick="toast('ההחלטה אושרה בדמו')">אשר</button> <button class="btn secondary" onclick="toast('בדמו אין עריכת נושא')">שנה נושא</button> <button class="btn danger" onclick="toast('הועבר לארכיון בדמו')">ארכיון</button></div></div>`).join('')}
+    function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));renderAll()}
+    document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>showScreen(b.dataset.screen)))
+    function toast(txt){const el=document.getElementById('toast');el.textContent=txt;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2300)}
+    function addConsoleLine(line){const el=document.getElementById('console');el.textContent += '\n' + line;el.scrollTop=el.scrollHeight;}
+    function fakeAgentRun(){const lines=['[scan] found 3 new files','[analyze] cloud_backlog.png → extracted chart, numbers, claims','[route] suggested topic: AI Infrastructure / Cloud Backlog','[explain] reason saved. status=pending_review','[export] updated image_index.csv and open_questions.md'];let i=0;function step(){if(i<lines.length){addConsoleLine(lines[i++]);setTimeout(step,260)}else{toast('סריקת סוכן דמו הסתיימה')}}step()}
+    function fakeUpload(){captures.unshift({title:'Screenshot: Private Credit BDC note', topic:'Private Markets', summary:'פריט דמה חדש לניתוח, כולל שאלה על NAV discount וסיכון אשראי.', score:8, tags:['BDC','Private Credit','NAV'], reason:'פריט פיננסי עם מושג חוזר ושאלה חשובה.'});renderCaptures();toast('נוסף פריט דמה')}
+    function copyReminder(){navigator.clipboard?.writeText(document.getElementById('mdBox').value);toast('הטקסט הועתק')}
+    function renderAll(){renderLatest();renderCaptures();renderTopics();renderReview();renderQuestions();renderDecisions()}
+    renderAll();
+  </script>
+</body>
+</html>

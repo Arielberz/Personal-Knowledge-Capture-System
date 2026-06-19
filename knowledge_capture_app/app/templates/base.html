@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ title if title else "מערכת לכידת ידע" }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="logo-block">
+          <div class="logo-mark">AI</div>
+          <div>
+            <h1>Knowledge Agent</h1>
+            <p>סוכן ידע אישי מקומי</p>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <a href="/" class="nav-item">דשבורד</a>
+          <a href="/agent" class="nav-item">סוכן AI</a>
+          <a href="/captures" class="nav-item">פריטי ידע</a>
+          <a href="/topics" class="nav-item">נושאים</a>
+          <a href="/add-data" class="nav-item">הוספת מידע</a>
+          <a href="/access-policy" class="nav-item">הרשאות גישה</a>
+          <a href="/questions" class="nav-item">שאלות פתוחות</a>
+          <a href="/reminders" class="nav-item">תזכורות</a>
+        </nav>
+
+        <div class="sidebar-note">
+          <b>מצב עבודה</b>
+          <p>המערכת בנויה ל־Local Agent עם Manual Review והרשאות גישה מוגבלות.</p>
+        </div>
+      </aside>
+
+      <main class="container">{% block content %}{% endblock %}</main>
+    </div>
+  </body>
+</html>

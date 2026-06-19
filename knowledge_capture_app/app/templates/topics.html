@@ -1,0 +1,24 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>מפת נושאים</h2>
+    <p>הנושאים שאליהם הסוכן מנסה לשייך ידע חדש, עם תחושת פעילות וחשיבות יחסית.</p>
+  </div>
+</div>
+
+<section class="hero compact">
+  <h1>תחומי הידע המרכזיים</h1>
+  <p>כל נושא מייצג אשכול ידע שהמערכת עוקבת אחריו ומעדכנת אותו לאורך זמן.</p>
+</section>
+
+<section class="topic-grid-ui">
+  {% for topic in topics %}
+  <article class="topic-tile">
+    <h3><a href="/topics/{{ topic.id }}">{{ topic.name }}</a></h3>
+    <p>{{ topic.description or "אין תיאור" }}</p>
+    <div class="topic-bar"><i style="width: {{ (topic.importance_score or 5) * 10 }}%"></i></div>
+    <small>{{ ((topic.importance_score or 5) * 10)|int }}% פעילות ידע</small>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

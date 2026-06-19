@@ -1,0 +1,184 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>סוכן AI מקומי</h2>
+    <p>כאן רואים את המנוע של המערכת: סריקה, ניתוח, שיוך נושא, הסבר, ואישור ידני.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/access-policy" class="action-link secondary-link">ערוך הרשאות</a>
+    <a href="/captures" class="action-link primary-link">צפה בפריטים</a>
+  </div>
+</div>
+
+<section class="hero compact">
+  <h1>AI Agent</h1>
+  <p>סריקה של תיקיות Inbox מורשות, יצירת החלטות וסבב בדיקה לפני אישור.</p>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>בקרות סוכן</h2>
+    <span class="pill">Manual Review</span>
+  </div>
+  <form method="post" action="/agent/scan" class="filters">
+    <button type="submit">הרצת סריקה עכשיו</button>
+  </form>
+</section>
+
+{% if scan_message %}
+<section class="card">
+  <h2>תוצאת הסריקה האחרונה</h2>
+  <pre class="answer">{{ scan_message }}</pre>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="panel-head">
+    <h2>סטטוס סוכן</h2>
+    <span class="pill">Run Summary</span>
+  </div>
+  {% if last_run %}
+  <ul class="list">
+    <li>מזהה ריצה: {{ last_run.id }}</li>
+    <li>סטטוס: {{ last_run.status }}</li>
+    <li>קבצים שנמצאו: {{ last_run.files_found }}</li>
+    <li>קבצים שעובדו: {{ last_run.files_processed }}</li>
+    <li>קבצים שנכשלו: {{ last_run.files_failed }}</li>
+  </ul>
+  {% else %}
+  <p>עדיין אין ריצות.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>תור בדיקה</h2>
+    <span class="pill">Pending</span>
+  </div>
+  {% if review_queue %}
+  <ul class="list">
+    {% for decision in review_queue %}
+    <li>
+      <strong>החלטה #{{ decision.id }}</strong>
+      <div>נושא מוצע: {{ decision.suggested_topic }}</div>
+      <div>סטטוס מוצע: {{ decision.suggested_status }}</div>
+      <div>ציון: {{ decision.knowledge_score }} | ביטחון: {{ decision.confidence }}</div>
+      <div>הסבר נושא: {{ decision.reason_for_topic }}</div>
+      <div>הסבר ציון: {{ decision.reason_for_score }}</div>
+      <div>מה ללמוד מזה: {{ decision.what_to_learn_from_this }}</div>
+      <div>שאלות פתוחות: {{ decision.open_questions }}</div>
+
+      <div class="decision-actions">
+        <form method="post" action="/agent/decision/{{ decision.id }}/approve">
+          <button type="submit">אישור</button>
+        </form>
+        <form method="post" action="/agent/decision/{{ decision.id }}/archive">
+          <button type="submit">ארכיון</button>
+        </form>
+        <form method="post" action="/agent/decision/{{ decision.id }}/requires-check" class="inline-form">
+          <input type="text" name="user_correction" placeholder="למה דורש בדיקה?" />
+          <button type="submit">דורש בדיקה</button>
+        </form>
+        <form method="post" action="/agent/decision/{{ decision.id }}/change-topic" class="inline-form">
+          <select name="topic_id" required>
+            {% for topic in topics %}
+            <option value="{{ topic.id }}">{{ topic.name }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="user_correction" placeholder="סיבה לשינוי נושא" />
+          <button type="submit">שינוי נושא</button>
+        </form>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>תור הבדיקה ריק.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>קבצים שנסרקו</h2>
+    <span class="pill">Source Files</span>
+  </div>
+  {% if recent_files %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>שם קובץ</th>
+          <th>סוג</th>
+          <th>סטטוס</th>
+          <th>נתיב</th>
+          <th>נצפה בתאריך</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in recent_files %}
+        <tr>
+          <td>{{ f.original_filename }}</td>
+          <td>{{ f.file_type }}</td>
+          <td>{{ f.status }}</td>
+          <td>{{ f.file_path }}</td>
+          <td>{{ f.last_seen_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>עדיין אין קבצים סרוקים.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>מדיניות מקורות נוכחית</h2>
+    <span class="pill">Safe Access</span>
+  </div>
+  <ul class="list">
+    {% for policy in policies %}
+    <li>
+      <strong>{{ policy.path_prefix }}</strong>
+      <div>סטטוס: {{ "פעיל" if policy.enabled else "כבוי" }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>לוגים של הסוכן</h2>
+    <span class="pill">Console</span>
+  </div>
+  {% if logs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>זמן</th>
+          <th>שלב</th>
+          <th>סטטוס</th>
+          <th>קובץ</th>
+          <th>הודעה</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at }}</td>
+          <td>{{ log.step }}</td>
+          <td>{{ log.status }}</td>
+          <td>{{ log.file_path }}</td>
+          <td>{{ log.message }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>עדיין אין לוגים.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>דשבורד ידע אישי</h2>
+    <p>סוכן AI מקומי שסורק תיקיות מורשות, מנתח קבצים ושומר הכל לתהליך Review מבוקר.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/agent" class="action-link secondary-link">פתח סוכן</a>
+    <a href="/add-data" class="action-link primary-link">הוסף פריט ידע</a>
+  </div>
+</div>
+
+<section class="hero">
+  <h1>תמונת מצב מהירה</h1>
+  <p>כל מה שהסוכן גילה, מה שממתין לבדיקה, ומה שכבר הפך לידע שמיש.</p>
+</section>
+
+<section class="stats-grid">
+  <article class="card stat">
+    <h3>סה"כ פריטים</h3>
+    <p>{{ stats.captures }}</p>
+  </article>
+  <article class="card stat">
+    <h3>שאלות פתוחות</h3>
+    <p>{{ stats.questions }}</p>
+  </article>
+  <article class="card stat">
+    <h3>תזכורות ממתינות</h3>
+    <p>{{ stats.reminders }}</p>
+  </article>
+</section>
+
+<section class="card filter-card">
+  <form method="get" action="/" class="filters">
+    <label>
+      נושא
+      <select name="topic_id">
+        <option value="">כל הנושאים</option>
+        {% for topic in topics %}
+        <option value="{{ topic.id }}" {% if selected_topic == topic.id %}selected{% endif %}>
+          {{ topic.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      ציון ידע מינימלי
+      <input type="number" min="1" max="10" name="min_score" value="{{ min_score }}" />
+    </label>
+
+    <button type="submit">סינון</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>פריטים אחרונים</h2>
+    <span class="pill">Top 12</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>כותרת</th>
+          <th>נושא</th>
+          <th>ציון</th>
+          <th>סטטוס</th>
+          <th>מקור</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for capture in latest_captures %}
+        <tr>
+          <td>{{ capture.title }}</td>
+          <td>{{ capture.topic.name if capture.topic else "ללא שיוך" }}</td>
+          <td>{{ capture.knowledge_score }}</td>
+          <td>{{ capture.status }}</td>
+          <td>{{ capture.source_type }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

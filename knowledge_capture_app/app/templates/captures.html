@@ -1,0 +1,73 @@
+{% extends "base.html" %} {% block content %}
+<div class="page-topbar">
+  <div class="headline">
+    <h2>פריטי ידע</h2>
+    <p>חיפוש, סינון ועיון בכל הגרפים, השיחות, ההערות והקבצים שהסוכן ניתח.</p>
+  </div>
+  <div class="page-actions">
+    <a href="/add-data" class="action-link primary-link">הוסף פריט ידני</a>
+  </div>
+</div>
+
+<section class="hero compact">
+  <h1>חיפוש וסינון</h1>
+  <p>מקד את הרשימה לפי נושא, ציון וסטטוס בדיקה.</p>
+</section>
+
+<section class="card filter-card">
+  <form method="get" action="/captures" class="filters">
+    <label>
+      נושא
+      <select name="topic_id">
+        <option value="">כל הנושאים</option>
+        {% for topic in topics %}
+        <option value="{{ topic.id }}" {% if selected_topic == topic.id %}selected{% endif %}>
+          {{ topic.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label>
+      ציון מינימלי
+      <input type="number" min="1" max="10" name="min_score" value="{{ min_score }}" />
+    </label>
+
+    <label>
+      סטטוס
+      <select name="status">
+        <option value="">הכל</option>
+        {% for option in ["pending_review", "approved", "archived", "low_value"] %}
+        <option value="{{ option }}" {% if selected_status == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <button type="submit">סינון</button>
+  </form>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>רשימת פריטים</h2>
+    <span class="pill">{{ captures|length }} פריטים</span>
+  </div>
+  <div class="capture-list">
+    {% for capture in captures %}
+    <article class="capture-card">
+      <div class="capture-thumb">{{ capture.source_type[:3]|upper }}</div>
+      <div class="capture-body">
+        <h3>{{ capture.title }}</h3>
+        <p>{{ capture.summary }}</p>
+        <div class="capture-meta">
+          <span class="tag-chip">{{ capture.topic.name if capture.topic else "ללא שיוך" }}</span>
+          <span class="tag-chip">{{ capture.confidence }}</span>
+          <span class="tag-chip">{{ capture.status }}</span>
+        </div>
+      </div>
+      <div class="capture-score score-{{ 'high' if capture.knowledge_score >= 8 else 'mid' if capture.knowledge_score >= 6 else 'low' }}">{{ capture.knowledge_score }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
