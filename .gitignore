@@ -19,3 +19,6 @@ venv/
 
 knowledge_capture_app/data/inbox/images/*
 !knowledge_capture_app/data/inbox/images/.gitkeep
+
+knowledge_capture_app/node_agent/node_modules/
+knowledge_capture_app/node_agent/package-lock.json

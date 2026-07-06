@@ -1,17 +1,32 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 try:
     from app.database import get_db
     from app.models import AgentDecision, AgentRun
+    from app.services.ai_service import processIncomingContent
     from app.services.agent_service import run_scan
 except ModuleNotFoundError:
     from database import get_db
     from models import AgentDecision, AgentRun
+    from services.ai_service import processIncomingContent
     from services.agent_service import run_scan
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
+knowledge_router = APIRouter(prefix="/api", tags=["knowledge"])
+
+
+class KnowledgeRequest(BaseModel):
+    rawText: str
+
+
+class KnowledgeResponse(BaseModel):
+    title: str
+    summary: str
+    tags: list[str]
+    category: str
 
 
 @router.post("/scan")
@@ -61,3 +76,14 @@ def get_decisions(db: Session = Depends(get_db)) -> list[dict]:
         }
         for d in decisions
     ]
+
+
+@knowledge_router.post("/knowledge", response_model=KnowledgeResponse)
+def process_knowledge(payload: KnowledgeRequest) -> KnowledgeResponse:
+    try:
+        result = processIncomingContent(payload.rawText)
+        return KnowledgeResponse(**result)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="AI service failed to process incoming content") from exc

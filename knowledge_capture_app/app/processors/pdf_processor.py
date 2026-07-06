@@ -7,4 +7,9 @@ except ModuleNotFoundError:
 
 
 def process_pdf(file_path: Path) -> dict[str, str | int]:
-    return analyze_with_mock(file_path, "pdf")
+    result = analyze_with_mock(file_path, "pdf")
+    result["reason_for_score"] = (
+        "PDF text extraction is not configured yet; used fallback analysis. "
+        + str(result.get("reason_for_score", ""))
+    )
+    return result

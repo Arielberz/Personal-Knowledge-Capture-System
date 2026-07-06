@@ -7,4 +7,9 @@ except ModuleNotFoundError:
 
 
 def process_image(file_path: Path) -> dict[str, str | int]:
-    return analyze_with_mock(file_path, "image")
+    result = analyze_with_mock(file_path, "image")
+    result["reason_for_score"] = (
+        "Image OCR is not configured yet; used fallback analysis. "
+        + str(result.get("reason_for_score", ""))
+    )
+    return result

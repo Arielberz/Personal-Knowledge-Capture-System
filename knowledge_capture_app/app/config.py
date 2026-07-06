@@ -11,6 +11,8 @@ class Settings(BaseModel):
     app_host: str = os.getenv("APP_HOST", "127.0.0.1")
     app_port: int = int(os.getenv("APP_PORT", "8000"))
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./database/knowledge.db")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
+    gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 settings = Settings()

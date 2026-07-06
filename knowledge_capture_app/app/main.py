@@ -5,13 +5,13 @@ from pathlib import Path
 try:
     from app.config import settings
     from app.database import Base, SessionLocal, engine
-    from app.routes.agent_api import router as agent_api_router
+    from app.routes.agent_api import knowledge_router, router as agent_api_router
     from app.routes.web import router as web_router
     from app.seed import seed_if_empty
 except ModuleNotFoundError:
     from config import settings
     from database import Base, SessionLocal, engine
-    from routes.agent_api import router as agent_api_router
+    from routes.agent_api import knowledge_router, router as agent_api_router
     from routes.web import router as web_router
     from seed import seed_if_empty
 
@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 app.include_router(web_router)
 app.include_router(agent_api_router)
+app.include_router(knowledge_router)
 
 
 @app.on_event("startup")
