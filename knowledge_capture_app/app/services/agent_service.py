@@ -136,7 +136,13 @@ def run_scan(db: Session) -> ScanSummary:
             db.flush()
 
             analysis = _process_by_type(file_path, f_type)
-            topic = route_topic(db, f_type, f"{file_path.name} {analysis['summary']}")
+            topic_blob_parts = [
+                file_path.name,
+                str(analysis.get("summary", "")),
+                str(analysis.get("category", "")),
+                " ".join(analysis.get("tags", [])) if isinstance(analysis.get("tags"), list) else "",
+            ]
+            topic = route_topic(db, f_type, " ".join(part for part in topic_blob_parts if part))
 
             capture = Capture(
                 source_type=f_type,

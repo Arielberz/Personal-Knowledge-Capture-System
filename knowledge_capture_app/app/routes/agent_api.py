@@ -1,18 +1,26 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime
+from pathlib import Path
+from shutil import copyfileobj
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 try:
     from app.database import get_db
-    from app.models import AgentDecision, AgentRun
+    from app.models import AgentDecision, AgentRun, Capture
     from app.services.ai_service import processIncomingContent
+    from app.services.ai_service import analyze_image_for_capture
     from app.services.agent_service import run_scan
+    from app.services.topic_router import route_topic
 except ModuleNotFoundError:
     from database import get_db
-    from models import AgentDecision, AgentRun
+    from models import AgentDecision, AgentRun, Capture
     from services.ai_service import processIncomingContent
+    from services.ai_service import analyze_image_for_capture
     from services.agent_service import run_scan
+    from services.topic_router import route_topic
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 knowledge_router = APIRouter(prefix="/api", tags=["knowledge"])
@@ -27,6 +35,14 @@ class KnowledgeResponse(BaseModel):
     summary: str
     tags: list[str]
     category: str
+
+
+class UploadKnowledgeResponse(BaseModel):
+    id: int
+    title: str
+    summary: str
+    main_topic_id: int | None
+    image_url: str
 
 
 @router.post("/scan")
@@ -87,3 +103,77 @@ def process_knowledge(payload: KnowledgeRequest) -> KnowledgeResponse:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail="AI service failed to process incoming content") from exc
+
+
+@knowledge_router.post("/knowledge/upload", response_model=UploadKnowledgeResponse)
+def upload_knowledge_image(
+    title: str = Form(...),
+    summary: str = Form(default=""),
+    topic_id: int | None = Form(default=None),
+    knowledge_score: int = Form(default=6),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> UploadKnowledgeResponse:
+    suffix = Path(image.filename or "").suffix
+    unique_name = f"{int(datetime.utcnow().timestamp() * 1000)}{suffix}"
+
+    uploads_dir = Path(__file__).resolve().parent.parent.parent / "data" / "inbox" / "images"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    destination = uploads_dir / unique_name
+    with destination.open("wb") as f:
+        copyfileobj(image.file, f)
+
+    generated_analysis = analyze_image_for_capture(destination)
+
+    final_topic_id = topic_id
+    if final_topic_id is None:
+        topic_blob_parts = [
+            title,
+            summary,
+            image.filename or unique_name,
+            str(generated_analysis.get("summary", "")),
+            str(generated_analysis.get("category", "")),
+        ]
+        maybe_tags = generated_analysis.get("tags")
+        if isinstance(maybe_tags, list):
+            topic_blob_parts.append(" ".join(str(tag) for tag in maybe_tags))
+        auto_topic = route_topic(db, "image", " ".join(part for part in topic_blob_parts if part))
+        final_topic_id = auto_topic.id if auto_topic else None
+
+    resolved_title = title.strip() or str(generated_analysis.get("title", "")).strip() or unique_name
+    normalized_summary = summary.strip() or str(generated_analysis.get("summary", "")).strip() or f"{resolved_title} (image upload)"
+
+    confidence = str(generated_analysis.get("confidence", "")).strip().lower()
+    if confidence not in {"low", "medium", "high"}:
+        confidence = "medium"
+
+    computed_score = generated_analysis.get("knowledge_score")
+    try:
+        final_score = int(computed_score)
+    except (TypeError, ValueError):
+        final_score = knowledge_score
+
+    relative_path = f"data/inbox/images/{unique_name}"
+    capture = Capture(
+        source_type="image",
+        file_path=relative_path,
+        original_filename=unique_name,
+        title=resolved_title,
+        summary=normalized_summary,
+        main_topic_id=final_topic_id,
+        knowledge_score=max(1, min(10, final_score)),
+        confidence=confidence,
+        status="pending_review",
+    )
+    db.add(capture)
+    db.commit()
+    db.refresh(capture)
+
+    return UploadKnowledgeResponse(
+        id=capture.id,
+        title=capture.title,
+        summary=capture.summary,
+        main_topic_id=capture.main_topic_id,
+        image_url=f"/inbox-images/{unique_name}",
+    )

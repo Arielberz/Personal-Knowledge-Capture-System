@@ -1,9 +1,13 @@
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from pathlib import Path
 import os
 
 
-load_dotenv()
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(_PROJECT_ROOT / ".env", override=False)
+load_dotenv(_PROJECT_ROOT / "node_agent" / ".env", override=False)
+load_dotenv(override=False)
 
 
 class Settings(BaseModel):

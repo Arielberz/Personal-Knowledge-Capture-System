@@ -1,7 +1,8 @@
 from datetime import datetime
 from pathlib import Path
+from shutil import copyfileobj
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -11,10 +12,14 @@ try:
     from app.database import get_db
     from app.models import AgentDecision, AgentRun, AllowedSource, Capture, OpenQuestion, ProcessingLog, Reminder, SourceFile, Topic
     from app.services.agent_service import run_scan
+    from app.services.ai_service import analyze_image_for_capture
+    from app.services.topic_router import route_topic
 except ModuleNotFoundError:
     from database import get_db
     from models import AgentDecision, AgentRun, AllowedSource, Capture, OpenQuestion, ProcessingLog, Reminder, SourceFile, Topic
     from services.agent_service import run_scan
+    from services.ai_service import analyze_image_for_capture
+    from services.topic_router import route_topic
 
 router = APIRouter()
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -156,9 +161,10 @@ def add_data_page(request: Request, db: Session = Depends(get_db)):
 def add_data_submit(
     request: Request,
     title: str = Form(...),
-    summary: str = Form(...),
-    source_path: str = Form(...),
-    topic_id: int | None = Form(default=None),
+    summary: str = Form(default=""),
+    source_path: str = Form(default=""),
+    image_file: UploadFile | None = File(default=None),
+    topic_id: str | None = Form(default=None),
     knowledge_score: int = Form(default=6),
     db: Session = Depends(get_db),
 ):
@@ -166,7 +172,54 @@ def add_data_submit(
     allowed_sources = db.scalars(select(AllowedSource).order_by(AllowedSource.path_prefix.asc())).all()
     enabled_prefixes = _enabled_source_prefixes(db)
 
-    if not _is_path_allowed(source_path, enabled_prefixes):
+    parsed_topic_id: int | None = None
+    if topic_id is not None and topic_id.strip() != "":
+        try:
+            parsed_topic_id = int(topic_id)
+        except ValueError:
+            return templates.TemplateResponse(
+                "add_data.html",
+                {
+                    "request": request,
+                    "topics": topics,
+                    "allowed_sources": allowed_sources,
+                    "message": None,
+                    "error": "ערך topic_id לא תקין. יש לבחור נושא מהרשימה או להשאיר ריק.",
+                },
+            )
+
+    effective_source_path = source_path.strip()
+    source_type = "manual_note"
+    generated_analysis: dict[str, str | int] | None = None
+
+    if image_file and image_file.filename:
+        uploads_dir = Path(__file__).resolve().parent.parent.parent / "data" / "inbox" / "images"
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+
+        suffix = Path(image_file.filename).suffix
+        unique_name = f"{int(datetime.utcnow().timestamp() * 1000)}{suffix}"
+        destination = uploads_dir / unique_name
+
+        with destination.open("wb") as f:
+            copyfileobj(image_file.file, f)
+
+        generated_analysis = analyze_image_for_capture(destination)
+        effective_source_path = f"data/inbox/images/{unique_name}"
+        source_type = "image"
+
+    if not effective_source_path:
+        return templates.TemplateResponse(
+            "add_data.html",
+            {
+                "request": request,
+                "topics": topics,
+                "allowed_sources": allowed_sources,
+                "message": None,
+                "error": "יש להזין נתיב מקור או להעלות קובץ תמונה.",
+            },
+        )
+
+    if not _is_path_allowed(effective_source_path, enabled_prefixes):
         return templates.TemplateResponse(
             "add_data.html",
             {
@@ -178,16 +231,45 @@ def add_data_submit(
             },
         )
 
-    file_name = Path(source_path).name if source_path else f"manual_{datetime.utcnow().timestamp()}"
+    if parsed_topic_id is None:
+        topic_blob_parts = [title, summary, effective_source_path]
+        if generated_analysis:
+            topic_blob_parts.append(str(generated_analysis.get("summary", "")))
+            topic_blob_parts.append(str(generated_analysis.get("category", "")))
+            maybe_tags = generated_analysis.get("tags")
+            if isinstance(maybe_tags, list):
+                topic_blob_parts.append(" ".join(str(tag) for tag in maybe_tags))
+        auto_topic = route_topic(db, source_type, " ".join(part for part in topic_blob_parts if part))
+        parsed_topic_id = auto_topic.id if auto_topic else None
+
+    file_name = Path(effective_source_path).name if effective_source_path else f"manual_{datetime.utcnow().timestamp()}"
+    resolved_title = title.strip()
+    if not resolved_title and generated_analysis:
+        resolved_title = str(generated_analysis.get("title", "")).strip()
+    if not resolved_title:
+        resolved_title = file_name
+
+    normalized_summary = summary.strip()
+    if not normalized_summary and generated_analysis:
+        normalized_summary = str(generated_analysis.get("summary", "")).strip()
+    if not normalized_summary:
+        normalized_summary = f"{resolved_title} ({source_type})"
+
+    confidence = "manual"
+    if generated_analysis:
+        generated_confidence = str(generated_analysis.get("confidence", "")).strip().lower()
+        if generated_confidence in {"low", "medium", "high"}:
+            confidence = generated_confidence
+
     capture = Capture(
-        source_type="manual_note",
-        file_path=source_path.strip(),
+        source_type=source_type,
+        file_path=effective_source_path,
         original_filename=file_name,
-        title=title.strip(),
-        summary=summary.strip(),
-        main_topic_id=topic_id,
+        title=resolved_title,
+        summary=normalized_summary,
+        main_topic_id=parsed_topic_id,
         knowledge_score=max(1, min(10, knowledge_score)),
-        confidence="manual",
+        confidence=confidence,
         status="pending_review",
     )
     db.add(capture)

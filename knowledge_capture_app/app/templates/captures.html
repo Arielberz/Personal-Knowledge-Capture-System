@@ -58,6 +58,18 @@
       <div class="capture-thumb">{{ capture.source_type[:3]|upper }}</div>
       <div class="capture-body">
         <h3>{{ capture.title }}</h3>
+        {% if capture.source_type == "image" %}
+        <p>
+          <a href="/inbox-images/{{ capture.original_filename }}" target="_blank" rel="noopener noreferrer">פתח תמונה</a>
+        </p>
+        <p>
+          <img
+            src="/inbox-images/{{ capture.original_filename }}"
+            alt="{{ capture.title }}"
+            style="max-width: 260px; width: 100%; border-radius: 12px; border: 1px solid #d8d8d8"
+          />
+        </p>
+        {% endif %}
         <p>{{ capture.summary }}</p>
         <div class="capture-meta">
           <span class="tag-chip">{{ capture.topic.name if capture.topic else "ללא שיוך" }}</span>

@@ -18,7 +18,9 @@ except ModuleNotFoundError:
 
 app = FastAPI(title=settings.app_name)
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.mount("/inbox-images", StaticFiles(directory=str(PROJECT_ROOT / "data" / "inbox" / "images")), name="inbox-images")
 app.include_router(web_router)
 app.include_router(agent_api_router)
 app.include_router(knowledge_router)

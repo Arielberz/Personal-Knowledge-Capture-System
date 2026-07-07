@@ -27,7 +27,7 @@
     <h2>טופס קליטה</h2>
     <span class="pill">Manual Input</span>
   </div>
-  <form method="post" action="/add-data" class="filters">
+  <form method="post" action="/add-data" class="filters" enctype="multipart/form-data">
     <label>
       כותרת
       <input type="text" name="title" required />
@@ -49,8 +49,13 @@
     </label>
 
     <label class="full-row">
-      נתיב מקור (חייב להיות מורשה)
-      <input type="text" name="source_path" placeholder="manual://note-001 או data/inbox/images/file.png" required />
+      העלאת תמונה (אופציונלי)
+      <input type="file" name="image_file" accept="image/*" />
+    </label>
+
+    <label class="full-row">
+      נתיב מקור (אופציונלי אם העלית תמונה; חייב להיות מורשה)
+      <input type="text" name="source_path" placeholder="manual://note-001 או data/inbox/images/file.png" />
     </label>
 
     <label class="full-row">

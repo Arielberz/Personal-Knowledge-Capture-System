@@ -14,7 +14,24 @@ def route_topic(db: Session, file_type: str, text_blob: str) -> Topic | None:
     keyword_map = {
         "AI Infrastructure": ["ai", "gpu", "data center", "cloud", "backlog", "capex"],
         "Market Valuation": ["p/e", "valuation", "earnings", "multiple", "forward"],
-        "ETF and Market Structure": ["etf", "index", "rebalancing", "tracking", "arbitrage"],
+        "ETF and Market Structure": [
+            "etf",
+            "index",
+            "rebalancing",
+            "tracking",
+            "arbitrage",
+            "stock",
+            "finance",
+            "financial",
+            "market",
+            "s&p",
+            "sp500",
+            "snp500",
+            "nasdaq",
+            "dow",
+            "chart",
+            "candlestick",
+        ],
     }
 
     for topic in topic_candidates:
@@ -23,5 +40,5 @@ def route_topic(db: Session, file_type: str, text_blob: str) -> Topic | None:
                 return topic
 
     if file_type == "image":
-        return next((t for t in topic_candidates if t.name == "AI Infrastructure"), None)
+        return next((t for t in topic_candidates if t.name == "ETF and Market Structure"), None)
     return topic_candidates[0] if topic_candidates else None
