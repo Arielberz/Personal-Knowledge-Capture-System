@@ -1,20 +1,337 @@
 {% extends "base.html" %} {% block content %}
 <section class="hero compact">
   <h1>שאלות פתוחות</h1>
-  <p>שאלות ששווה לחזור אליהן ולהעמיק בהן.</p>
+  <p>בחר נושא, תריץ מבחן קצר, וקבל פידבק מיידי עם הסבר לכל תשובה.</p>
 </section>
 
 <section class="card">
+  <div class="panel-head">
+    <h2>מבחן לפי נושא</h2>
+    <span class="pill">AI Quiz</span>
+  </div>
+
+  <div class="filters">
+    <label>
+      בחירת נושא למבחן
+      <select id="quiz-topic-selector">
+        <option value="">כל הנושאים</option>
+        {% for topic in topics %}
+        <option value="{{ topic.id }}" {% if selected_topic == topic.id %}selected{% endif %}>{{ topic.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="button" id="quiz-start-btn">התחל מבחן</button>
+  </div>
+
+  <div class="quiz-shell" id="quiz-root" aria-live="polite">
+    <div class="quiz-loading">בחר נושא ולחץ "התחל מבחן".</div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="panel-head">
+    <h2>רשימת שאלות פתוחות</h2>
+    <span class="pill">{{ questions|length }}</span>
+  </div>
   <ul class="list">
     {% for question in questions %}
     <li>
       <strong>[{{ question.importance_score }}]</strong>
-      {{ question.question }}
-      {% if question.topic %}
+      {{ question.question }} {% if question.topic %}
       <span class="pill">{{ question.topic.name }}</span>
       {% endif %}
     </li>
+    {% else %}
+    <li>לא נמצאו שאלות פתוחות לנושא שנבחר.</li>
     {% endfor %}
   </ul>
 </section>
+
+<script>
+  (function () {
+    const state = {
+      questions: [],
+      topicId: "",
+      currentQuestionIndex: 0,
+      selectedOptionIndex: null,
+      hasSubmitted: false,
+      score: 0,
+      hintVisible: false,
+      isLoading: false,
+      errorMessage: "",
+    };
+
+    const root = document.getElementById("quiz-root");
+    const topicSelector = document.getElementById("quiz-topic-selector");
+    const startButton = document.getElementById("quiz-start-btn");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function isValidQuizPayload(payload) {
+      if (!payload || !Array.isArray(payload.questions) || payload.questions.length === 0) {
+        return false;
+      }
+      return payload.questions.every((q) => {
+        return (
+          typeof q.question === "string" &&
+          Array.isArray(q.answerOptions) &&
+          q.answerOptions.length >= 2 &&
+          q.answerOptions.some((opt) => Boolean(opt.isCorrect))
+        );
+      });
+    }
+
+    function getCurrentQuestion() {
+      return state.questions[state.currentQuestionIndex];
+    }
+
+    function restartQuiz() {
+      state.currentQuestionIndex = 0;
+      state.selectedOptionIndex = null;
+      state.hasSubmitted = false;
+      state.score = 0;
+      state.hintVisible = false;
+      state.errorMessage = "";
+      render();
+    }
+
+    async function loadQuizByTopic() {
+      state.topicId = topicSelector.value;
+      state.isLoading = true;
+      state.errorMessage = "";
+      render();
+
+      try {
+        const query = state.topicId ? `?topic_id=${encodeURIComponent(state.topicId)}` : "";
+        const response = await fetch(`/api/quiz/sample${query}`, {
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+          throw new Error("שגיאה בטעינת המבחן מהשרת.");
+        }
+
+        const payload = await response.json();
+        if (!isValidQuizPayload(payload)) {
+          throw new Error("מבנה JSON לא תקין למבחן.");
+        }
+
+        state.questions = payload.questions;
+        state.currentQuestionIndex = 0;
+        state.selectedOptionIndex = null;
+        state.hasSubmitted = false;
+        state.score = 0;
+        state.hintVisible = false;
+      } catch (error) {
+        state.questions = [];
+        state.errorMessage = error instanceof Error ? error.message : "שגיאה לא צפויה.";
+      } finally {
+        state.isLoading = false;
+        render();
+      }
+    }
+
+    function onOptionChange(event) {
+      if (state.hasSubmitted) {
+        return;
+      }
+      const value = Number.parseInt(event.target.value, 10);
+      if (!Number.isNaN(value)) {
+        state.selectedOptionIndex = value;
+        render();
+      }
+    }
+
+    function submitAnswer() {
+      if (state.hasSubmitted || state.selectedOptionIndex === null) {
+        return;
+      }
+      const current = getCurrentQuestion();
+      const selectedOption = current.answerOptions[state.selectedOptionIndex];
+      if (selectedOption && selectedOption.isCorrect) {
+        state.score += 1;
+      }
+      state.hasSubmitted = true;
+      render();
+    }
+
+    function nextQuestion() {
+      if (!state.hasSubmitted) {
+        return;
+      }
+      if (state.currentQuestionIndex + 1 >= state.questions.length) {
+        state.currentQuestionIndex = state.questions.length;
+        render();
+        return;
+      }
+      state.currentQuestionIndex += 1;
+      state.selectedOptionIndex = null;
+      state.hasSubmitted = false;
+      state.hintVisible = false;
+      render();
+    }
+
+    function bindEvents() {
+      root.querySelectorAll("input[name='quiz-option']").forEach((input) => {
+        input.addEventListener("change", onOptionChange);
+      });
+
+      const submitBtn = root.querySelector("[data-action='submit-answer']");
+      if (submitBtn) {
+        submitBtn.addEventListener("click", submitAnswer);
+      }
+
+      const nextBtn = root.querySelector("[data-action='next-question']");
+      if (nextBtn) {
+        nextBtn.addEventListener("click", nextQuestion);
+      }
+
+      const hintBtn = root.querySelector("[data-action='toggle-hint']");
+      if (hintBtn) {
+        hintBtn.addEventListener("click", () => {
+          state.hintVisible = !state.hintVisible;
+          render();
+        });
+      }
+
+      const restartBtn = root.querySelector("[data-action='restart-quiz']");
+      if (restartBtn) {
+        restartBtn.addEventListener("click", restartQuiz);
+      }
+    }
+
+    function renderResult() {
+      const total = state.questions.length;
+      const percentage = Math.round((state.score / total) * 100);
+      root.innerHTML = `
+        <section class="quiz-result card">
+          <h3>המבחן הסתיים</h3>
+          <p class="quiz-result-score">ציון: <b>${state.score}</b> מתוך <b>${total}</b> (${percentage}%)</p>
+          <button type="button" data-action="restart-quiz">Restart Quiz</button>
+        </section>
+      `;
+      bindEvents();
+    }
+
+    function optionClass(option, index) {
+      const classes = ["quiz-option"];
+      if (!state.hasSubmitted && state.selectedOptionIndex === index) {
+        classes.push("is-selected");
+      }
+      if (state.hasSubmitted) {
+        if (option.isCorrect) {
+          classes.push("is-correct");
+        } else if (state.selectedOptionIndex === index) {
+          classes.push("is-wrong");
+        }
+      }
+      return classes.join(" ");
+    }
+
+    function renderQuestion() {
+      const question = getCurrentQuestion();
+      const isLast = state.currentQuestionIndex === state.questions.length - 1;
+      const selectedOption =
+        state.selectedOptionIndex !== null ? question.answerOptions[state.selectedOptionIndex] : null;
+      const selectedIsCorrect = Boolean(selectedOption && selectedOption.isCorrect);
+      const correctOption = question.answerOptions.find((option) => option.isCorrect);
+      const feedbackHtml = state.hasSubmitted
+        ? `<div class="quiz-feedback ${selectedIsCorrect ? "quiz-feedback-correct" : "quiz-feedback-wrong"}">
+             ${
+               selectedIsCorrect
+                 ? "תשובה נכונה. מעולה."
+                 : `תשובה לא נכונה. התשובה הנכונה: ${escapeHtml(correctOption ? correctOption.text : "לא זמין")}`
+             }
+           </div>`
+        : "";
+
+      const optionsHtml = question.answerOptions
+        .map((option, index) => {
+          return `
+            <li>
+              <label class="${optionClass(option, index)}">
+                <span class="quiz-option-row">
+                  <input
+                    type="radio"
+                    name="quiz-option"
+                    value="${index}"
+                    ${state.selectedOptionIndex === index ? "checked" : ""}
+                    ${state.hasSubmitted ? "disabled" : ""}
+                  />
+                  <span class="quiz-option-text">${escapeHtml(option.text || "אפשרות")}</span>
+                </span>
+                ${state.hasSubmitted ? `<span class="quiz-rationale">${escapeHtml(option.rationale || "")}</span>` : ""}
+              </label>
+            </li>
+          `;
+        })
+        .join("");
+
+      root.innerHTML = `
+        <section class="quiz-card card">
+          <div class="quiz-header">
+            <span class="quiz-progress">שאלה ${state.currentQuestionIndex + 1} מתוך ${state.questions.length}</span>
+            <span class="quiz-score">ניקוד: ${state.score}</span>
+          </div>
+
+          <h3 class="quiz-question">${escapeHtml(question.question)}</h3>
+
+          <div class="quiz-hint-row">
+            <button type="button" class="quiz-ghost" data-action="toggle-hint">${state.hintVisible ? "הסתר רמז" : "הצג רמז"}</button>
+            ${state.hintVisible ? `<p class="quiz-hint">${escapeHtml(question.hint || "אין רמז זמין.")}</p>` : ""}
+          </div>
+
+          <ul class="quiz-options">${optionsHtml}</ul>
+
+          ${feedbackHtml}
+
+          <div class="quiz-actions">
+            <button type="button" data-action="submit-answer" ${state.selectedOptionIndex === null || state.hasSubmitted ? "disabled" : ""}>Submit Answer</button>
+            ${state.hasSubmitted ? `<button type="button" class="quiz-next" data-action="next-question">${isLast ? "סיום" : "Next Question"}</button>` : ""}
+          </div>
+        </section>
+      `;
+
+      bindEvents();
+    }
+
+    function render() {
+      if (state.isLoading) {
+        root.innerHTML = '<div class="quiz-loading">טוען מבחן...</div>';
+        return;
+      }
+
+      if (state.errorMessage) {
+        root.innerHTML = `
+          <section class="quiz-error card">
+            <h3>לא ניתן להציג מבחן</h3>
+            <p>${escapeHtml(state.errorMessage)}</p>
+          </section>
+        `;
+        return;
+      }
+
+      if (!state.questions.length) {
+        root.innerHTML = '<div class="quiz-loading">בחר נושא ולחץ "התחל מבחן".</div>';
+        return;
+      }
+
+      if (state.currentQuestionIndex >= state.questions.length) {
+        renderResult();
+        return;
+      }
+
+      renderQuestion();
+    }
+
+    startButton.addEventListener("click", loadQuizByTopic);
+    render();
+  })();
+</script>
 {% endblock %}

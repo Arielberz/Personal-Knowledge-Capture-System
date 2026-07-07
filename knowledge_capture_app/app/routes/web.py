@@ -1,8 +1,10 @@
 from datetime import datetime
 from pathlib import Path
+import random
 from shutil import copyfileobj
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -34,6 +36,14 @@ def _enabled_source_prefixes(db: Session) -> list[str]:
 def _is_path_allowed(source_path: str, allowed_prefixes: list[str]) -> bool:
     normalized = source_path.strip()
     return any(normalized.startswith(prefix) for prefix in allowed_prefixes)
+
+
+def _shuffle_quiz_answers(payload: dict) -> dict:
+    questions = payload.get("questions", [])
+    for question in questions:
+        options = question.get("answerOptions", [])
+        random.shuffle(options)
+    return payload
 
 
 @router.get("/")
@@ -130,9 +140,22 @@ def topic_detail(topic_id: int, request: Request, db: Session = Depends(get_db))
 
 
 @router.get("/questions")
-def questions(request: Request, db: Session = Depends(get_db)):
-    questions_data = db.scalars(select(OpenQuestion).order_by(OpenQuestion.importance_score.desc())).all()
-    return templates.TemplateResponse("questions.html", {"request": request, "questions": questions_data})
+def questions(request: Request, topic_id: int | None = Query(default=None), db: Session = Depends(get_db)):
+    questions_query = select(OpenQuestion).order_by(OpenQuestion.importance_score.desc())
+    if topic_id is not None:
+        questions_query = questions_query.where(OpenQuestion.topic_id == topic_id)
+
+    questions_data = db.scalars(questions_query).all()
+    topics = db.scalars(select(Topic).order_by(Topic.name.asc())).all()
+    return templates.TemplateResponse(
+        "questions.html",
+        {
+            "request": request,
+            "questions": questions_data,
+            "topics": topics,
+            "selected_topic": topic_id,
+        },
+    )
 
 
 @router.get("/reminders")
@@ -419,6 +442,386 @@ def requires_check_decision(decision_id: int, user_correction: str = Form(defaul
                 capture.status = "pending_review"
         db.commit()
     return RedirectResponse(url="/agent", status_code=303)
+
+
+@router.get("/quiz")
+def quiz_page(request: Request):
+    return RedirectResponse(url="/questions", status_code=307)
+
+
+@router.get("/api/quiz/sample")
+def quiz_sample_data(topic_id: int | None = Query(default=None), db: Session = Depends(get_db)):
+    selected_topic_name = None
+    if topic_id is not None:
+        topic = db.get(Topic, topic_id)
+        selected_topic_name = topic.name if topic else None
+
+    if selected_topic_name and any(
+        key in selected_topic_name.lower() for key in ["etf", "market", "finance", "פיננס", "השק", "שוק"]
+    ):
+        payload = {
+            "questions": [
+                {
+                    "questionNumber": 1,
+                    "question": "איזה משפט מתאר נכון ETF?",
+                    "answerOptions": [
+                        {
+                            "text": "ETF הוא קרן סל הנסחרת כמו מניה",
+                            "rationale": "נכון. ETF נסחר בזמן אמת לאורך יום המסחר.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "ETF ניתן לקנות רק פעם ביום בסגירה",
+                            "rationale": "לא נכון. זה נכון יותר לקרנות נאמנות מסורתיות.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "ETF לא מאפשר פיזור כלל",
+                            "rationale": "לא נכון. רבים מה-ETF-ים בנויים בדיוק לפיזור רחב.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "חשוב על אופן המסחר של ETF בבורסה.",
+                },
+                {
+                    "questionNumber": 2,
+                    "question": "מה יתרון מרכזי בפיזור השקעות?",
+                    "answerOptions": [
+                        {
+                            "text": "מקטין תלות בנכס אחד",
+                            "rationale": "נכון. פיזור מוריד סיכון ספציפי לנכס יחיד.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "מבטיח רווח בכל מצב",
+                            "rationale": "לא נכון. פיזור מפחית סיכון אך לא מבטיח תשואה.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "מונע תנודתיות לחלוטין",
+                            "rationale": "לא נכון. תנודתיות יכולה להישאר גם בתיק מגוון.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "המפתח הוא ניהול סיכון, לא ביטול סיכון.",
+                },
+                {
+                    "questionNumber": 3,
+                    "question": "מה ההבדל המרכזי בין מניה לאג\"ח?",
+                    "answerOptions": [
+                        {
+                            "text": "מניה משקפת בעלות, אג\"ח משקפת חוב",
+                            "rationale": "נכון. מניה היא חלק בבעלות החברה, אג\"ח היא התחייבות להחזר חוב.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "אין הבדל מהותי ביניהן",
+                            "rationale": "לא נכון. מדובר בשני סוגי נכסים שונים מהיסוד.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "אג\"ח תמיד מסוכנת יותר ממניה",
+                            "rationale": "לא נכון. רמת הסיכון תלויה בסוג הנכס ובמנפיק.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "שאל את עצמך: בעלות או הלוואה?",
+                },
+                {
+                    "questionNumber": 4,
+                    "question": "מה המשמעות של יחס הוצאות (Expense Ratio) בקרן סל?",
+                    "answerOptions": [
+                        {
+                            "text": "עמלה שנתית הנגבית מנכסי הקרן",
+                            "rationale": "נכון. זהו שיעור העלות השנתית לניהול הקרן.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "מס שהמדינה גובה על כל פעולה",
+                            "rationale": "לא נכון. זהו לא מס ממשלתי אלא עלות ניהול הקרן.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "ריבית שהמשקיע מקבל בסוף שנה",
+                            "rationale": "לא נכון. מדובר בעלות, לא ברווח.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "זה קשור לעלות ניהול, לא לתשואה מובטחת.",
+                },
+                {
+                    "questionNumber": 5,
+                    "question": "למה איזון תיק תקופתי (Rebalancing) יכול להיות חשוב?",
+                    "answerOptions": [
+                        {
+                            "text": "כדי להחזיר את התיק להקצאת הסיכון המתוכננת",
+                            "rationale": "נכון. האיזון שומר על פרופיל הסיכון המקורי.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "כדי להבטיח תשואה חיובית בכל רבעון",
+                            "rationale": "לא נכון. איזון לא מבטיח תשואה.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "כדי לבטל לחלוטין עמלות מסחר",
+                            "rationale": "לא נכון. איזון עצמו עשוי אף ליצור פעולות מסחר.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "תחשוב על שמירה על רמת סיכון קבועה.",
+                },
+                {
+                    "questionNumber": 6,
+                    "question": "מה בדרך כלל קורה לקשר בין סיכון לתשואה צפויה?",
+                    "answerOptions": [
+                        {
+                            "text": "סיכון גבוה יותר עשוי לאפשר תשואה צפויה גבוהה יותר",
+                            "rationale": "נכון. זו הנחת יסוד מרכזית בשוק ההון.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "אין שום קשר בין סיכון לתשואה",
+                            "rationale": "לא נכון. לרוב קיים קשר בין השניים.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "סיכון גבוה תמיד מבטיח תשואה גבוהה",
+                            "rationale": "לא נכון. פוטנציאל גבוה לא מבטיח תוצאה בפועל.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "המילה החשובה: 'צפויה', לא 'מובטחת'.",
+                },
+                {
+                    "questionNumber": 7,
+                    "question": "מה היתרון של השקעה עקבית לאורך זמן (DCA)?",
+                    "answerOptions": [
+                        {
+                            "text": "מפחיתה תלות בתזמון כניסה חד-פעמי",
+                            "rationale": "נכון. פריסה בזמן יכולה להפחית סיכון תזמון.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "מבטיחה תשואה גבוהה מכל אסטרטגיה אחרת",
+                            "rationale": "לא נכון. אין הבטחת תשואה.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "מבטלת תנודתיות בשוק",
+                            "rationale": "לא נכון. התנודתיות בשוק עדיין קיימת.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "הדגש הוא הפחתת תלות ברגע אחד בשוק.",
+                },
+                {
+                    "questionNumber": 8,
+                    "question": "מה נחשב לרוב לסיכון ספציפי לחברה?",
+                    "answerOptions": [
+                        {
+                            "text": "כשל ניהולי בחברה מסוימת",
+                            "rationale": "נכון. זהו סיכון נקודתי שניתן לרוב להפחית בפיזור.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "שינוי ריבית במשק כולו",
+                            "rationale": "לא נכון. זה יותר סיכון מערכתי/שוקי.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "אינפלציה כללית במשק",
+                            "rationale": "לא נכון. זהו סיכון מאקרו רחב, לא ספציפי לחברה אחת.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "שאל מה קשור לחברה אחת מול כל השוק.",
+                },
+            ]
+        }
+        return JSONResponse(content=_shuffle_quiz_answers(payload))
+
+    payload = {
+        "questions": [
+            {
+                "questionNumber": 1,
+                "question": "איזה יחס בין סיכון לתשואה נחשב לרוב כאיזון סביר למשקיע מתחיל?",
+                "answerOptions": [
+                    {
+                        "text": "100% מניות צמיחה",
+                        "rationale": "חשיפה מלאה למניות מגדילה תנודתיות ועלולה להיות אגרסיבית מדי להתחלה.",
+                        "isCorrect": False,
+                    },
+                    {
+                        "text": "שילוב מניות ואג\"ח לפי רמת סיכון אישית",
+                        "rationale": "פיזור בין אפיקים נוטה לייצב את התיק ולשפר ניהול סיכון.",
+                        "isCorrect": True,
+                    },
+                    {
+                        "text": "להחזיק הכול במזומן לאורך שנים",
+                        "rationale": "מזומן שומר על יציבות, אך בדרך כלל נשחק מול אינפלציה בטווח ארוך.",
+                        "isCorrect": False,
+                    },
+                ],
+                "hint": "חפש תשובה שמדגישה פיזור וניהול סיכון.",
+            },
+            {
+                "questionNumber": 2,
+                "question": "מה המשמעות של 'פיזור' בתיק השקעות?",
+                "answerOptions": [
+                    {
+                        "text": "לקנות רק את המניה המובילה במדד",
+                        "rationale": "התמקדות בנכס יחיד מגדילה סיכון ספציפי.",
+                        "isCorrect": False,
+                    },
+                    {
+                        "text": "להשקיע בכמה סוגי נכסים וסקטורים",
+                        "rationale": "פיזור מפחית תלות בנכס יחיד ומשפר עמידות לשינויים.",
+                        "isCorrect": True,
+                    },
+                    {
+                        "text": "להחליף נכסים כל יום",
+                        "rationale": "תדירות גבוהה לא מחליפה אסטרטגיית פיזור אמיתית.",
+                        "isCorrect": False,
+                    },
+                ],
+                "hint": "חשוב על חלוקת סיכון בין מקורות שונים.",
+            },
+                {
+                    "questionNumber": 3,
+                    "question": "מהי דרך טובה לבדוק אם הבנת נושא לעומק?",
+                    "answerOptions": [
+                        {
+                            "text": "להסביר את הנושא במילים פשוטות",
+                            "rationale": "נכון. הסבר פשוט חושף פערי הבנה במהירות.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "לשנן משפט אחד בלי הקשר",
+                            "rationale": "לא נכון. שינון בלי הבנה לא בודק עומק אמיתי.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "לדלג על דוגמאות",
+                            "rationale": "לא נכון. דוגמאות מחזקות הבנה יישומית.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "יכולת להסביר לאחרים היא מבחן טוב להבנה.",
+                },
+                {
+                    "questionNumber": 4,
+                    "question": "מה כדאי לעשות כשנשארת שאלה פתוחה אחרי למידה?",
+                    "answerOptions": [
+                        {
+                            "text": "לתעד אותה ולעקוב עד לקבלת תשובה",
+                            "rationale": "נכון. מעקב שיטתי הופך פער ידע למשימת למידה.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "להתעלם ממנה",
+                            "rationale": "לא נכון. התעלמות משאירה חור בהבנה.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "לנחש תשובה סופית ולסגור",
+                            "rationale": "לא נכון. ניחוש לא מחליף בדיקה אמינה.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "שאלה פתוחה טובה היא משימה, לא רעש.",
+                },
+                {
+                    "questionNumber": 5,
+                    "question": "מה המטרה המרכזית של רמז בשאלה?",
+                    "answerOptions": [
+                        {
+                            "text": "לכוון לחשיבה הנכונה בלי לתת את התשובה",
+                            "rationale": "נכון. רמז טוב מכוון מסלול חשיבה.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "להחליף את כל תהליך הפתרון",
+                            "rationale": "לא נכון. הרמז עוזר, לא פותר במקומך.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "לבלבל בין האפשרויות",
+                            "rationale": "לא נכון. מטרת רמז היא בהירות, לא בלבול.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "רמז טוב מרמז על כיוון, לא על נוסח סופי.",
+                },
+                {
+                    "questionNumber": 6,
+                    "question": "מה התועלת בהסברים קצרים לכל תשובה אחרי Submit?",
+                    "answerOptions": [
+                        {
+                            "text": "למידה מהירה גם מטעויות וגם מתשובות נכונות",
+                            "rationale": "נכון. כך מתקבלת למידה ממוקדת בכל שאלה.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "רק הארכת זמן המבחן",
+                            "rationale": "לא נכון. הסברים טובים משפרים הבנה איכותית.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "ביטול הצורך בחזרה על חומר",
+                            "rationale": "לא נכון. הסברים עוזרים, אך לא מחליפים תרגול חוזר.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "תחשוב על פידבק מיידי כתהליך למידה.",
+                },
+                {
+                    "questionNumber": 7,
+                    "question": "איזה שימוש בציון מבחן הוא הכי נכון?",
+                    "answerOptions": [
+                        {
+                            "text": "לזהות נושאים לחיזוק ולבנות תכנית שיפור",
+                            "rationale": "נכון. ציון הוא אינדיקציה לשיפור, לא תווית קבועה.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "להחליט שאין צורך ללמוד יותר",
+                            "rationale": "לא נכון. גם ציון גבוה לא מבטל תחזוקה של ידע.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "להשוות רק לאחרים בלי ניתוח אישי",
+                            "rationale": "לא נכון. הערך הגדול הוא שיפור עצמי ממוקד.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "מדד טוב מוביל לפעולה הבאה.",
+                },
+                {
+                    "questionNumber": 8,
+                    "question": "מה סימן לכך שהבנת טעות שעשית בשאלה?",
+                    "answerOptions": [
+                        {
+                            "text": "אתה יודע להסביר למה התשובה שלך הייתה שגויה",
+                            "rationale": "נכון. הבנת הטעות עצמה היא לב השיפור.",
+                            "isCorrect": True,
+                        },
+                        {
+                            "text": "אתה רק זוכר את האות הנכונה",
+                            "rationale": "לא נכון. זכירת אות בלי היגיון לא מבטיחה למידה.",
+                            "isCorrect": False,
+                        },
+                        {
+                            "text": "אתה מדלג לשאלה הבאה בלי לקרוא הסבר",
+                            "rationale": "לא נכון. דילוג על הסבר מפספס את הערך הלימודי.",
+                            "isCorrect": False,
+                        },
+                    ],
+                    "hint": "האם אתה מבין את הסיבה, לא רק את התוצאה?",
+                },
+        ]
+    }
+    return JSONResponse(content=_shuffle_quiz_answers(payload))
 
 
 @router.post("/agent/decision/{decision_id}/change-topic")
